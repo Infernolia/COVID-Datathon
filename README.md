@@ -11,7 +11,7 @@ Group members: Aboli Marathe, Ahmed Gobba, Dr. Raouf Hajji, Ruby Zhang,Faith Ile
   Which of these lineages (if any) are most correlated with outcome severity?<BR>
   
  <h1>Data Sample</h1><BR> 
-  <img src="a2.png"  width="800" height="600"><BR>
+  <img src="a2.png"  width="500" height="500"><BR>
 <h1>Visualization</h1><BR>
   <h1>Data<h1><BR>
   <img src="a1.png"  width="800" height="600"><BR>
