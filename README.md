@@ -29,3 +29,5 @@ Group members: Aboli Marathe, Ahmed Gobba, Dr. Raouf Hajji, Ruby Zhang,Faith Ile
 The distance between lineages falls between (0.00 - 0.02) and is insufficient to consider them as different genotypes.
 There is no significant difference in the association between each of the lineages and severity of outcome.  
 
+<h1>Resources</h1>
+Google drive link(for large files): https://drive.google.com/open?id=14Q42dBQFwCuVUevzKAka9sNBRS5HjMYv
