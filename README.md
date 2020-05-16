@@ -2,9 +2,8 @@
 
 Track D: Epidemiology Group:D_001
 
-Group member: Aboli Marathe, Ahmed Gobba, Dr. Raouf Hajji, Ruby Zhang,Faith Ilesanmi, Sumin Lan
+Group members: Aboli Marathe, Ahmed Gobba, Dr. Raouf Hajji, Ruby Zhang,Faith Ilesanmi, Sumin Lan
 
-Our project topic is about discovering which COVID-19 strains have been correlated with the most severe outcomes up to date. We tend to analyze the severity and preparedness of COVID-19 first and then build model to predict the correlation between Strain and severe results.
 
 
 <h1>Research Questions</h1><BR>
@@ -21,3 +20,9 @@ Our project topic is about discovering which COVID-19 strains have been correlat
 
 
   <img src="beta4.png"  width="800" height="600"><BR>
+  
+  <h1>CONCLUSIONS</H1>
+  The impact of the COVID-19 outbreak can be curtailed with:
+The distance between lineages falls between (0.00 - 0.02) and is insufficient to consider them as different genotypes.
+There is no significant difference in the association between each of the lineages and severity of outcome.  
+
