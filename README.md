@@ -1,6 +1,6 @@
 ## Project: Exploring the Severity of Different Covid-19 Strains
 
-Track D: Epidemiology Group:D_01
+Track D: Epidemiology Group:D_001
 
 Group member: Aboli Marathe, Ahmed Gobba, Dr. Raouf Hajji, Ruby Zhang,Faith Ilesanmi, Sumin Lan
 
