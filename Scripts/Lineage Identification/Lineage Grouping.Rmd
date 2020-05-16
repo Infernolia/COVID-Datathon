@@ -1,0 +1,351 @@
+---
+title: "ConsensusSequencing"
+author: "Ahmed Gobba"
+date: "13/05/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache=TRUE, autodep=TRUE)
+```
+
+
+```{r, echo = FALSE}
+#Installing seqinr package 
+if(!require(seqinr)) {
+  install.packages("seqinr")
+  library(seqinr)
+}
+
+#Installing ggtree package 
+if(!require(BiocManager)) {
+  install.packages("BiocManager")
+  BiocManager::install("ggtree")
+}
+
+#Installing seqinr package 
+if(!require(pheatmap)) {
+  install.packages("pheatmap")
+  library(pheatmap)
+}
+
+#BiocManager::install("ggtree")
+
+library(ggtree)
+library(tidyverse)
+# tree <- read.tree("nextstrain_ncov_global_tree.nwk")
+```
+
+We read the sequences data from the GISAID website.
+
+```{r}
+#Reading the alignment file from GISAID
+genealignment <- read.alignment(file = "msa_0512.fasta", format = "fasta")
+
+# Generating the distance matrix 
+# dist_matrix <- dist.alignment(genealignment, matrix = "identity") 
+
+# This is too computationally intensive so let's do it by clade
+```
+
+GISAID doesn't have information on the clade of each sequence so 
+we shall use the clade assignment by the nextstrain website. 
+
+
+```{r}
+# Reading in the sampling data from NextStrain website. 
+samplingdata <- read.csv("nextstrain_alldata.csv", header = TRUE)
+```
+
+### Finding distance Matrix and the consensus sequence for each clade
+Let's split the data by clade
+```{r}
+table(samplingdata$Clade) # how many sequences in each Clade
+sum(samplingdata$Clade == "") # 752 sequences without Clade information 
+
+seq_without_clade <- subset(samplingdata, samplingdata$Clade == "") 
+seq_with_clade <- subset(samplingdata, samplingdata$Clade != "") 
+
+
+ids_of_clad_seq <- seq_with_clade$Strain #ids of strains that have Clade assignment
+
+# sum(ids_of_clad_seq %in% genealignment[2])
+gene_seq_ids <- genealignment[[2]]
+# head(ids_of_clad_seq)
+
+# The ids in the sequence data are not in the same format as in the sampling data
+
+ids_temp <- substr(gene_seq_ids, 9, str_length(gene_seq_ids))
+
+ids_temp <- strsplit(ids_temp, "[|]")
+
+table(unlist (lapply(ids_temp, length))) # some elements are empty 
+
+nonemptyindex <- unlist(lapply(ids_temp, length)) != 0 
+
+ids_temp <- ids_temp[nonemptyindex]
+
+non_empty_gene_seq_ids <- gene_seq_ids[nonemptyindex] # whole string format
+
+ids <- unlist(lapply(ids_temp, '[[', 1)) #ids in the same format is in data used by nextstrain
+
+id_key <- as.data.frame(cbind(ids, non_empty_gene_seq_ids))
+
+names(id_key) <-c("sampling", "GISAID")
+# length(ids)
+# table(sapply(ids, nchar))
+```
+
+
+```{r}
+sum(ids %in% ids_of_clad_seq) # how many sequence ids are in id clade data
+length(ids_of_clad_seq) # I am losing around 800 sequences due to naming
+
+idandclads <- seq_with_clade[,c("Strain", "Clade")]
+
+# temp <- genealignment[2]
+# 
+# index <- sapply(temp, nchar) < 55
+# 
+# names <- temp[[1]]
+# 
+# length(names[index])
+
+
+# Now we need to subset nueclotide data to only sequences whose clads we know 
+temp_index <- ids %in% ids_of_clad_seq
+
+
+new_genealignment <- genealignment
+
+new_genealignment[1] <- sum(temp_index)
+
+new_genealignment[[2]] <- new_genealignment[[2]][nonemptyindex]
+new_genealignment[[2]] <- new_genealignment[[2]][temp_index]
+
+new_genealignment[[3]] <- new_genealignment[[3]][nonemptyindex]
+new_genealignment[[3]] <- new_genealignment[[3]][temp_index]
+
+new_genealignment[[4]] <- new_genealignment[[4]]
+
+
+```
+So now we have subsetted the DNA sequencing data into only the sequences whose 
+clade assignment we know. We now want to split the alignments by clade and 
+compute the distance matrix for each of the clade to find the consensus 
+sequence. 
+
+
+```{r}
+
+ids_we_using <- ids[ids %in% ids_of_clad_seq]
+
+temp_df <- as.data.frame(ids_we_using)
+names(temp_df) <- "Strain"
+
+data_ref <- merge(temp_df, idandclads, by.y = "Strain", by.x = "Strain",
+                  all.x = TRUE, all.y =  FALSE)
+
+data_ref <- merge(data_ref, id_key, by.x = "Strain", by.y = "sampling",
+                  all.x = TRUE, ally.y  = FALSE)
+unique(data_ref$Clade) # There are 10 different clades in our dataset 
+
+# table(data_ref$Clade)
+
+# Adding an index number to our reference data 
+data_ref$index <- c(1:nrow(data_ref))
+
+#Splitting by Clade 
+list_of_clades <- split(data_ref, data_ref$Clade)[-1]
+
+# getting the index numbers for each clade 
+strain_names <- lapply(list_of_clades, function(x) x[,3])
+
+
+```
+
+So now we have the list of lists of index numbers for each clade. Now, 
+I want to split the alignment object which includes sequences from all clads 
+to smaller alignment objects by clade. I also add the consensus sequence for each 
+clade. 
+
+```{r}
+for (i in 1:length(strain_names)){
+temp_alignment <- new_genealignment
+
+temp_strain_names <- strain_names[[i]]
+tempp_index <- new_genealignment[[2]] %in% temp_strain_names
+
+
+temp_alignment[[1]] <- sum(tempp_index)
+temp_alignment[[2]] <- new_genealignment[[2]][tempp_index]
+temp_alignment[[3]] <- new_genealignment[[3]][tempp_index]
+temp_alignment[[4]] <- new_genealignment[[4]]
+
+assign(names(strain_names)[i], temp_alignment)
+}
+
+# data_ref[data_ref$GISAID == sample(A2[[2]], 1, replace = TRUE), "Clade"] == "A2" #test 
+
+list_of_alignments <- list(A1a, A2, A2a, A3, A6, A7, B, B1, B2, B4)
+```
+
+```{r}
+# calculating and adding consensus sequence 
+clade_names <- names(strain_names)
+new_align_names <- sapply(clade_names, function(x) paste0(x, "_with_consensus"))
+i <- 5
+for (i in 1:length(list_of_alignments)) {
+  
+temp_alignment <- list_of_alignments[[i]]
+temp_consensus <- paste(consensus(A2), collapse = "")
+
+temp_alignment[[1]] <- temp_alignment[[1]] + 1
+temp_alignment[[2]] <- append(temp_alignment[[2]], "Consensus")
+temp_alignment[[3]] <- append(temp_alignment[[3]], temp_consensus)
+
+assign(new_align_names[i], temp_alignment)
+}
+
+list_of_alignments_with_consensus <- list(A1a_with_consensus,
+                           A2_with_consensus, A2a_with_consensus,
+                           A3_with_consensus, A6_with_consensus,
+                           A7_with_consensus, B_with_consensus,
+                           B1_with_consensus, B2_with_consensus,
+                           B4_with_consensus)
+
+```
+
+
+
+```{r}
+start.time <- Sys.time()
+distance_matrices <- lapply(list_of_alignments_with_consensus, dist.alignment)
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+names(distance_matrices) <- names(strain_names) #labelling the matrices
+```
+It took 30 minutes to find all the distance matrices so I'm going to save them 
+and load them in future runs. 
+
+```{r}
+for (i in 1:length(distance_matrices)){
+  clade_name <- names(distance_matrices)[i]
+  write.table(as.matrix(distance_matrices[[i]]), file = paste0(clade_name,
+                                                               "_dist_matrix_final.csv"))
+}
+
+# # Reading the tables 
+# names_of_matrices <- sapply(names(strain_names),
+#                             function(x) paste0(x,"_dist_matrix_new.csv"))   
+# 
+# distance_matrices <- list()
+# 
+# for(i in 1:length(names_of_matrices)){
+#  distance_matrices[[i]] <- read.table(names_of_matrices[i], stringsAsFactors=FALSE)
+# }
+```
+
+```{r}
+#Initializing table for results 
+representative_table <- data.frame(matrix(nrow = length(strain_names), ncol = 3))
+representative_table[,1] <- names(strain_names) 
+representative_table[,3] <- rep(0, length(strain_names))
+
+names(representative_table) <- c("clade", "representative", "dist_from_consensus")
+
+for(i in 1:length(distance_matrices)){
+  mat <- as.matrix(distance_matrices[[i]])
+  num <- nrow(mat)
+  
+  if(num > 2){
+  mat <- mat[-num,]
+  
+  plot(mat[,num], ylab = "Divergence", xlab = "Index of Sequence",
+       main = paste("Distance from consensus for",
+                    names(strain_names)[i], "clade", sep = " ")) # plot distance
+  
+  candidates <- rownames(mat)[mat[,num] == min(mat[,num])] # Sequences that are closes to the consensus
+  }
+  
+  else {
+    candidates <- rownames(mat)
+  }
+  representative <- candidates[1] #pick one candidate 
+  
+  representative_table[i,2] <- representative
+  representative_table[i,3] <- min(mat[,num])
+}
+
+
+ print(representative_table)
+
+
+```
+
+```{r}
+#quick test 
+# data_ref[data_ref$GISAID == "hCoV-19/Singapore/43/2020|EPI_ISL_428822|2020-02-16|Asia", "Clade"] == "B"
+```
+
+### Distance between the representatives 
+
+Now we need to create an alignment object with of just our representatives
+and then calculate the distance matrix. 
+
+```{r}
+
+rep_ids <- representative_table[,2]
+
+rep_index <- genealignment[[2]] %in% rep_ids # where our reps are 
+
+#sum(rep_index) making sure there is only 10 of them 
+
+# No subsetting to the alignment object we want 
+rep_genealignment <- genealignment
+rep_genealignment[1] <- sum(rep_index)
+rep_genealignment[[2]] <- rep_genealignment[[2]][rep_index]
+rep_genealignment[[3]] <- rep_genealignment[[3]][rep_index]
+```
+
+
+```{r}
+# write.fasta(sequences = rep_genealignment[[3]], names = rep_genealignment[[2]], as.string = TRUE, file.out = "representatives.fasta")
+# 
+# read.alignment("representatives.fasta", format = "fasta")
+```
+
+
+```{r}
+# writing a function for clustering based on different threshold 
+# inputs: alignment object, threshold
+
+threshold_grouping <- function(rep_genealignment, threshold){
+
+rep_dist <- as.matrix(dist.alignment(rep_genealignment))
+
+names_mat <- data_ref[match(rep_genealignment[[2]], data_ref$GISAID), "Clade"]
+dimnames(rep_dist) <- list(names_mat, names_mat)
+
+temp <- rep_dist - matrix(rep(threshold,prod(dim(rep_dist))),
+                          nrow = dim(rep_dist)[1], ncol = dim(rep_dist)[2])
+
+grouping <- ifelse(temp < 0, 0, 1)
+
+dist_matrix <- pheatmap(rep_dist, display_numbers = T, number_format = "%.4f",
+         color = colorRampPalette(c('white','red'))(100),
+         cluster_rows = F, cluster_cols = F, fontsize_number = 8)
+
+grouping_matrix <- pheatmap(grouping, display_numbers = T, number_format = "%.0f",
+         color = colorRampPalette(c('green','red'))(100),
+         cluster_rows = F, cluster_cols = F, fontsize_number = 8)
+
+return(list(dist_matrix,grouping_matrix))
+}
+
+threshold_grouping(rep_genealignment, 0.01)
+
+```
+
